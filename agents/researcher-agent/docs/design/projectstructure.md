@@ -36,5 +36,6 @@ agents/researcher-agent/
 ```
 
 Notes:
+
 - docs/design is agent-level and is the source of truth for design artifacts.
 - Root docs will only index and link to each agent’s design docs.

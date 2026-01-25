@@ -25,7 +25,9 @@ def _normalize_result(item: dict[str, Any]) -> dict[str, str]:
     return {
         "title": str(item.get("title") or item.get("source") or "").strip(),
         "url": str(item.get("url") or item.get("link") or item.get("href") or "").strip(),
-        "snippet": str(item.get("snippet") or item.get("body") or item.get("excerpt") or "").strip(),
+        "snippet": str(
+            item.get("snippet") or item.get("body") or item.get("excerpt") or ""
+        ).strip(),
         "date": str(item.get("date") or item.get("published") or "").strip(),
         "source": str(item.get("source") or item.get("publisher") or "").strip(),
     }
