@@ -2,13 +2,13 @@ import json
 
 from app.core.llm import chat_completion
 from app.domain.services.research_enrichment import enrich_with_research
-from app.langgraph.state import ResearchState
 from app.langgraph.prompts import RESEARCHER_PROMPT
+from app.langgraph.state import ResearchState
 
 
-def researcher_node(state: ResearchState) -> ResearchState:
-    enriched = enrich_with_research(state)
-    summary = _summarize(enriched)
+async def researcher_node(state: ResearchState) -> ResearchState:
+    enriched = await enrich_with_research(state)
+    summary = await _summarize(enriched)
     return ResearchState(
         topic=enriched.topic,
         audience=enriched.audience,
@@ -23,7 +23,7 @@ def researcher_node(state: ResearchState) -> ResearchState:
     )
 
 
-def _summarize(state: ResearchState) -> str:
+async def _summarize(state: ResearchState) -> str:
     sources_payload = json.dumps(state.sources[:5], ensure_ascii=False)
     user_prompt = (
         f"Topic: {state.topic}\n"
@@ -33,5 +33,5 @@ def _summarize(state: ResearchState) -> str:
         f"Sources: {sources_payload}\n\n"
         "Return 4-6 concise bullet points summarizing the key insights."
     )
-    response = chat_completion(RESEARCHER_PROMPT, user_prompt)
+    response = await chat_completion(RESEARCHER_PROMPT, user_prompt)
     return response.strip() or ""

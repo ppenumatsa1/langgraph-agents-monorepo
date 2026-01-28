@@ -7,24 +7,28 @@ from azure.identity import DefaultAzureCredential
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
 
-from app.core.config import get_settings
+from app.core.exceptions import ExternalServiceError
+from app.core.utils import get_settings
 
 logger = logging.getLogger(__name__)
 
 
-def chat_completion(system_prompt: str, user_prompt: str) -> str:
+async def chat_completion(system_prompt: str, user_prompt: str) -> str:
     model = _get_model()
     if model is None:
         logger.warning("LLM config missing; returning placeholder response.")
         return ""
 
-    response = model.invoke(
-        [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt),
-        ]
-    )
-    return (response.content or "").strip()
+    try:
+        response = await model.ainvoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ]
+        )
+        return (response.content or "").strip()
+    except Exception as exc:
+        raise ExternalServiceError("LLM request failed", cause=exc) from exc
 
 
 @lru_cache

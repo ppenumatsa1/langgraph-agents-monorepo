@@ -1,9 +1,15 @@
+import asyncio
+
+from app.core.exceptions import ExternalServiceError
 from app.domain.repo.web_search_repo import search_web
 from app.langgraph.state import ResearchState
 
 
-def enrich_with_research(state: ResearchState) -> ResearchState:
-    sources = search_web(state.topic)
+async def enrich_with_research(state: ResearchState) -> ResearchState:
+    try:
+        sources = await asyncio.to_thread(search_web, state.topic)
+    except Exception as exc:
+        raise ExternalServiceError("Web search failed", cause=exc) from exc
     return ResearchState(
         topic=state.topic,
         audience=state.audience,

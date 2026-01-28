@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -8,10 +9,12 @@ from app.domain.services.research_service import run_research, stream_research
 from app.langgraph.state import ResearchState
 
 router = APIRouter()
+logger = logging.getLogger("app.routes.research")
 
 
 @router.post("/research", response_model=ResearchResponse)
-def research(request: ResearchRequest) -> ResearchResponse:
+async def research(request: ResearchRequest) -> ResearchResponse:
+    logger.info("Research request received", extra={"topic": request.topic})
     state = ResearchState(
         topic=request.topic,
         audience=request.audience,
@@ -24,7 +27,8 @@ def research(request: ResearchRequest) -> ResearchResponse:
         review_notes=[],
         summary="",
     )
-    result = run_research(state)
+    result = await run_research(state)
+    logger.info("Research request completed", extra={"topic": request.topic})
     return ResearchResponse(
         topic=result.topic,
         draft=result.draft,
@@ -34,7 +38,8 @@ def research(request: ResearchRequest) -> ResearchResponse:
 
 
 @router.post("/research/stream")
-def research_stream(request: ResearchRequest) -> StreamingResponse:
+async def research_stream(request: ResearchRequest) -> StreamingResponse:
+    logger.info("Research stream request received", extra={"topic": request.topic})
     state = ResearchState(
         topic=request.topic,
         audience=request.audience,
@@ -48,8 +53,8 @@ def research_stream(request: ResearchRequest) -> StreamingResponse:
         summary="",
     )
 
-    def event_stream():
-        for snapshot in stream_research(state):
+    async def event_stream():
+        async for snapshot in stream_research(state):
             payload = {
                 "topic": snapshot.topic,
                 "sources": snapshot.sources,
@@ -59,6 +64,7 @@ def research_stream(request: ResearchRequest) -> StreamingResponse:
                 "summary": snapshot.summary,
             }
             yield _sse("update", payload)
+        logger.info("Research stream request completed", extra={"topic": request.topic})
         yield _sse("done", {"status": "complete"})
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

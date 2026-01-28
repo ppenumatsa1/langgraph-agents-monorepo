@@ -1,3 +1,5 @@
+import asyncio
+
 from app.domain.services.research_service import run_research
 from app.langgraph.state import ResearchState
 
@@ -17,7 +19,7 @@ def test_end_to_end_flow_with_mocks(monkeypatch) -> None:
             }
         ]
 
-    def fake_chat_completion(system_prompt: str, user_prompt: str) -> str:
+    async def fake_chat_completion(system_prompt: str, user_prompt: str) -> str:
         if "review_notes" in user_prompt:
             return '{"review_notes": ["OK"], "summary": "Looks good."}'
         if "Research Summary" in user_prompt:
@@ -37,7 +39,7 @@ def test_end_to_end_flow_with_mocks(monkeypatch) -> None:
         time_range=None,
     )
 
-    result = run_research(state)
+    result = asyncio.run(run_research(state))
 
     assert result.research_summary
     assert result.draft

@@ -73,6 +73,7 @@ module logAnalytics './modules/log-analytics.bicep' = {
   params: {
     name: logAnalyticsName
     location: location
+    tags: tags
   }
 }
 
@@ -81,6 +82,7 @@ module appInsights './modules/app-insights.bicep' = {
     name: appInsightsName
     location: location
     workspaceId: logAnalytics.outputs.workspaceId
+    tags: tags
   }
 }
 

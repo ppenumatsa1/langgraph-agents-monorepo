@@ -2,17 +2,17 @@ import logging
 import os
 
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter, AzureMonitorTraceExporter
-from opentelemetry import trace
+from opentelemetry import _logs, trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from app.core.config import get_settings
+from app.core.utils.config import get_settings
 
 
 def configure_telemetry(app=None) -> None:
@@ -42,7 +42,11 @@ def configure_telemetry(app=None) -> None:
         BatchLogRecordProcessor(AzureMonitorLogExporter(connection_string=connection_string))
     )
 
-    LoggingInstrumentor().instrument(set_logging_format=False, logger_provider=logger_provider)
+    _logs.set_logger_provider(logger_provider)
+    logging.getLogger().addHandler(
+        LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+    )
+    LoggingInstrumentor().instrument(set_logging_format=True, logger_provider=logger_provider)
     RequestsInstrumentor().instrument()
 
     if app is not None:
