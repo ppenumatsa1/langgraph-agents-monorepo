@@ -34,4 +34,3 @@ dist/
 
 # Local env files
 .env
-.env.*

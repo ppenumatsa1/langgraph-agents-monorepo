@@ -9,7 +9,9 @@ agents/researcher-agent/
 │   ├── core/
 │   │   ├── config.py
 │   │   ├── logging.py
-│   │   ├── telemetry.py
+│   │   ├── observability/
+│   │   │   ├── __init__.py
+│   │   │   └── telemetry.py
 │   │   └── exceptions.py
 │   ├── domain/
 │   │   ├── schemas/
@@ -18,8 +20,10 @@ agents/researcher-agent/
 │   └── langgraph/
 │       ├── graph.py
 │       ├── state.py
-│       ├── tools.py
+│       ├── tools/
+│       │   └── web_search.py
 │       └── nodes/
+│           ├── web_search.py
 │           ├── researcher.py
 │           ├── writer.py
 │           └── reviewer.py

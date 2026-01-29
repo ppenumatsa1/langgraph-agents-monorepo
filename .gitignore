@@ -34,4 +34,6 @@ dist/
 
 # Local env files
 .env
-.env.*
+
+# azd files
+.azure/

@@ -43,6 +43,10 @@ Provide a focused research workflow that takes a topic, gathers sources, drafts 
 - No long-form report generation beyond summary
 - No agent-to-agent calls unless explicitly designed
 
+## Design Notes
+
+- Web search is executed via a LangGraph ToolNode (not a plain function call) so tool calls are captured as trace spans in Azure Application Insights.
+
 ## Quality Gates
 
 ### Artifact Completion Checklist

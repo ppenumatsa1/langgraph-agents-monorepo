@@ -5,8 +5,8 @@ from app.langgraph.state import ResearchState
 
 
 def test_end_to_end_flow_with_mocks(monkeypatch) -> None:
-    from app.domain.services import research_enrichment
     from app.langgraph.nodes import researcher, reviewer, writer
+    from app.langgraph.tools import web_search as web_search_tools
 
     def fake_search_web(query: str, max_results: int = 6, region: str = "us-en"):
         return [
@@ -19,14 +19,16 @@ def test_end_to_end_flow_with_mocks(monkeypatch) -> None:
             }
         ]
 
-    async def fake_chat_completion(system_prompt: str, user_prompt: str) -> str:
+    async def fake_chat_completion(
+        system_prompt: str, user_prompt: str, config: dict | None = None
+    ) -> str:
         if "review_notes" in user_prompt:
             return '{"review_notes": ["OK"], "summary": "Looks good."}'
         if "Research Summary" in user_prompt:
             return "Draft content."
         return "- Insight 1\n- Insight 2"
 
-    monkeypatch.setattr(research_enrichment, "search_web", fake_search_web)
+    monkeypatch.setattr(web_search_tools, "web_search", fake_search_web)
     monkeypatch.setattr(researcher, "chat_completion", fake_chat_completion)
     monkeypatch.setattr(writer, "chat_completion", fake_chat_completion)
     monkeypatch.setattr(reviewer, "chat_completion", fake_chat_completion)

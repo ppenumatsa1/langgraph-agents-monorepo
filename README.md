@@ -1,6 +1,8 @@
 # LangGraph Agents Monorepo
 
-Production-ready monorepo for LangGraph agents deployed on Azure Container Apps (ACA) with azd. Each agent is independently deployable as a FastAPI service and follows a consistent, layered architecture.
+## Summary
+
+Monorepo for LangGraph-based agents deployed to Azure Container Apps with azd. Each agent is an independently deployable FastAPI service following the same layered architecture and observability patterns.
 
 ## Goals
 
@@ -18,56 +20,72 @@ Production-ready monorepo for LangGraph agents deployed on Azure Container Apps 
 - Dockerfile per agent for containerized runs
 - Root Makefile to orchestrate agent tasks
 
-## Repository Structure
+## Prerequisites (Ubuntu/Debian)
 
-- agents/ — independently deployable agents
-- docs/ — cross-agent docs and index
-- infra/ — shared Azure infra (planned)
+Install the required tools on Ubuntu/Debian:
 
-See the agents index at [docs/agents/README.md](docs/agents/README.md).
+1. Update packages
+   - sudo apt-get update
+2. Install Python 3.11 and venv
+   - sudo apt-get install -y python3.11 python3.11-venv python3-pip
+3. Install Docker (for container builds)
+   - sudo apt-get install -y docker.io
+4. Install Azure CLI
+   - curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+5. Install Azure Developer CLI (azd)
+   - curl -fsSL https://aka.ms/install-azd.sh | sudo bash
+6. Install Make (optional)
+   - sudo apt-get install -y make
 
-## Prerequisites
+## Local Development
 
-- Python 3.11+
-- Docker (for container builds)
-- Azure CLI and Azure Developer CLI (for Azure deployments)
-- Make (optional but recommended)
+See [agents/researcher-agent/README.md](agents/researcher-agent/README.md) for local setup and run instructions.
+
+## Verify Local Deployment
+
+Run the smoke tests against a local server:
+
+- SMOKE_BASE_URL=http://localhost:8000 python -m pytest agents/researcher-agent/tests/test_smoke_live.py
+
+## Azure Deployment (azd)
+
+We use azd for deployments. Before running azd, ensure:
+
+- A Python virtual environment is created and active for the agent (for local validation)
+- Agent-level .env is present with required configuration
+
+Typical steps:
+
+1. azd auth login
+2. azd env new
+3. azd provision
+4. azd deploy
+
+## Verify Azure Deployment
+
+Run the smoke tests against the deployed endpoint:
+
+- SMOKE_BASE_URL=https://<your-app>.azurecontainerapps.io python -m pytest agents/researcher-agent/tests/test_smoke_live.py
+
+## Observability
+
+- Structured logging with trace/span correlation
+- OpenTelemetry export to Application Insights
+- LangGraph spans for agent execution
+- Tool execution spans (ToolNode-based tools appear as dependencies)
 
 ## Agent Design Docs
 
-Each agent owns its design artifacts under docs/design (PRD, tech stack, project structure, user flow).
+Each agent owns design artifacts under docs/design (PRD, tech stack, project structure, user flow).
 
 | Agent            | Description                        | README                                                                 |
 | ---------------- | ---------------------------------- | ---------------------------------------------------------------------- |
 | researcher-agent | Research → write → review workflow | [agents/researcher-agent/README.md](agents/researcher-agent/README.md) |
 
-## Local Development (Agent)
+## License
 
-1. Create venv and install dependencies
-2. Configure env vars in agent .env
-3. Run the agent via uvicorn or Makefile
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
-## Common Make Targets
+## Disclaimer
 
-Root orchestrates per-agent tasks:
-
-- make run AGENT=<agent>
-- make test AGENT=<agent>
-- make build AGENT=<agent>
-
-Each agent also supports local targets in its Makefile.
-
-## Azure Deployment (azd)
-
-- One azd project, multiple services
-- One ACA environment, one container app per agent
-- Shared infra provisioned once
-
-## Observability
-
-- Structured logging by default
-- OpenTelemetry hooks ready for App Insights
-
-## Status
-
-The monorepo is production-ready in structure, with one working agent (researcher) and additional agents expected to follow the same blueprint.
+This repository is provided for educational and demonstration purposes only. It is not intended for production use as-is. You are responsible for reviewing, testing, and securing any code, configurations, credentials, or deployment artifacts before using them in real systems. Do not deploy this repository without your own security review, compliance checks, and operational hardening (logging, alerting, backups, access controls, and cost safeguards). By using this repository, you acknowledge that you assume all risks associated with its use.
