@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from ddgs import DDGS
+from langchain.tools import tool
 
 
 def web_search(query: str, max_results: int = 6, region: str = "us-en") -> list[dict[str, str]]:
@@ -19,6 +20,14 @@ def web_search(query: str, max_results: int = 6, region: str = "us-en") -> list[
                 results.append(_normalize_result(item))
 
     return [r for r in results if r.get("url")]
+
+
+@tool("web_search")
+def web_search_tool(
+    query: str, max_results: int = 6, region: str = "us-en"
+) -> list[dict[str, str]]:
+    """Search the web for relevant sources."""
+    return web_search(query=query, max_results=max_results, region=region)
 
 
 def _normalize_result(item: dict[str, Any]) -> dict[str, str]:

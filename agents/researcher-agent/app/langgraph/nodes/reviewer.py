@@ -5,8 +5,8 @@ from app.langgraph.prompts import REVIEWER_PROMPT
 from app.langgraph.state import ResearchState
 
 
-async def reviewer_node(state: ResearchState) -> ResearchState:
-    review_notes, summary = await _review(state)
+async def reviewer_node(state: ResearchState, config: dict | None = None) -> ResearchState:
+    review_notes, summary = await _review(state, config)
     return ResearchState(
         topic=state.topic,
         audience=state.audience,
@@ -21,7 +21,7 @@ async def reviewer_node(state: ResearchState) -> ResearchState:
     )
 
 
-async def _review(state: ResearchState) -> tuple[list[str], str]:
+async def _review(state: ResearchState, config: dict | None = None) -> tuple[list[str], str]:
     sources_payload = json.dumps(state.sources[:5], ensure_ascii=False)
     user_prompt = (
         f"Topic: {state.topic}\n"
@@ -29,7 +29,7 @@ async def _review(state: ResearchState) -> tuple[list[str], str]:
         f"Sources: {sources_payload}\n\n"
         "Return JSON with keys review_notes (list of strings) and summary (string)."
     )
-    response = await chat_completion(REVIEWER_PROMPT, user_prompt)
+    response = await chat_completion(REVIEWER_PROMPT, user_prompt, config=config)
     try:
         parsed = json.loads(response)
         notes = parsed.get("review_notes") or []

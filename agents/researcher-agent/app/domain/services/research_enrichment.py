@@ -5,9 +5,9 @@ from app.domain.repo.web_search_repo import search_web
 from app.langgraph.state import ResearchState
 
 
-async def enrich_with_research(state: ResearchState) -> ResearchState:
+async def enrich_with_research(state: ResearchState, config: dict | None = None) -> ResearchState:
     try:
-        sources = await asyncio.to_thread(search_web, state.topic)
+        sources = await asyncio.to_thread(search_web, state.topic, config=config)
     except Exception as exc:
         raise ExternalServiceError("Web search failed", cause=exc) from exc
     return ResearchState(

@@ -13,19 +13,21 @@ from app.core.utils import get_settings
 logger = logging.getLogger(__name__)
 
 
-async def chat_completion(system_prompt: str, user_prompt: str) -> str:
+async def chat_completion(system_prompt: str, user_prompt: str, config: dict | None = None) -> str:
     model = _get_model()
     if model is None:
         logger.warning("LLM config missing; returning placeholder response.")
         return ""
 
     try:
-        response = await model.ainvoke(
-            [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt),
-            ]
-        )
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt),
+        ]
+        if config is None:
+            response = await model.ainvoke(messages)
+        else:
+            response = await model.ainvoke(messages, config=config)
         return (response.content or "").strip()
     except Exception as exc:
         raise ExternalServiceError("LLM request failed", cause=exc) from exc

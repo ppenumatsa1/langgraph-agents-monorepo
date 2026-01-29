@@ -42,5 +42,10 @@ def test_live_research_stream(topic: str) -> None:
         timeout=90,
     ) as response:
         assert response.status_code == 200
-        first_chunk = next(response.iter_text(), "")
-        assert "event:" in first_chunk or "data:" in first_chunk
+        saw_event = False
+        for chunk in response.iter_text():
+            if "event:" in chunk or "data:" in chunk:
+                saw_event = True
+            if "event: done" in chunk:
+                break
+        assert saw_event

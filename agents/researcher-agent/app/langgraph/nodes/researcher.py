@@ -6,9 +6,9 @@ from app.langgraph.prompts import RESEARCHER_PROMPT
 from app.langgraph.state import ResearchState
 
 
-async def researcher_node(state: ResearchState) -> ResearchState:
-    enriched = await enrich_with_research(state)
-    summary = await _summarize(enriched)
+async def researcher_node(state: ResearchState, config: dict | None = None) -> ResearchState:
+    enriched = await enrich_with_research(state, config=config)
+    summary = await _summarize(enriched, config)
     return ResearchState(
         topic=enriched.topic,
         audience=enriched.audience,
@@ -23,7 +23,7 @@ async def researcher_node(state: ResearchState) -> ResearchState:
     )
 
 
-async def _summarize(state: ResearchState) -> str:
+async def _summarize(state: ResearchState, config: dict | None = None) -> str:
     sources_payload = json.dumps(state.sources[:5], ensure_ascii=False)
     user_prompt = (
         f"Topic: {state.topic}\n"
@@ -33,5 +33,5 @@ async def _summarize(state: ResearchState) -> str:
         f"Sources: {sources_payload}\n\n"
         "Return 4-6 concise bullet points summarizing the key insights."
     )
-    response = await chat_completion(RESEARCHER_PROMPT, user_prompt)
+    response = await chat_completion(RESEARCHER_PROMPT, user_prompt, config=config)
     return response.strip() or ""

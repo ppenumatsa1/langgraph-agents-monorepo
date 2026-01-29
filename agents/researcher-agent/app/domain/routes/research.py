@@ -3,6 +3,7 @@ import logging
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+from opentelemetry import context as otel_context
 
 from app.domain.schemas.research import ResearchRequest, ResearchResponse
 from app.domain.services.research_service import run_research, stream_research
@@ -53,19 +54,25 @@ async def research_stream(request: ResearchRequest) -> StreamingResponse:
         summary="",
     )
 
+    stream_context = otel_context.get_current()
+
     async def event_stream():
-        async for snapshot in stream_research(state):
-            payload = {
-                "topic": snapshot.topic,
-                "sources": snapshot.sources,
-                "research_summary": snapshot.research_summary,
-                "draft": snapshot.draft,
-                "review_notes": snapshot.review_notes,
-                "summary": snapshot.summary,
-            }
-            yield _sse("update", payload)
-        logger.info("Research stream request completed", extra={"topic": request.topic})
-        yield _sse("done", {"status": "complete"})
+        token = otel_context.attach(stream_context)
+        try:
+            async for snapshot in stream_research(state):
+                payload = {
+                    "topic": snapshot.topic,
+                    "sources": snapshot.sources,
+                    "research_summary": snapshot.research_summary,
+                    "draft": snapshot.draft,
+                    "review_notes": snapshot.review_notes,
+                    "summary": snapshot.summary,
+                }
+                yield _sse("update", payload)
+            logger.info("Research stream request completed", extra={"topic": request.topic})
+            yield _sse("done", {"status": "complete"})
+        finally:
+            otel_context.detach(token)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

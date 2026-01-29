@@ -5,7 +5,7 @@ from app.langgraph.prompts import WRITER_PROMPT
 from app.langgraph.state import ResearchState
 
 
-async def writer_node(state: ResearchState) -> ResearchState:
+async def writer_node(state: ResearchState, config: dict | None = None) -> ResearchState:
     sources_payload = json.dumps(state.sources[:5], ensure_ascii=False)
     user_prompt = (
         f"Topic: {state.topic}\n"
@@ -16,7 +16,9 @@ async def writer_node(state: ResearchState) -> ResearchState:
         f"Sources: {sources_payload}\n\n"
         "Write a concise markdown draft with citations [1], [2], [3] aligned to sources."
     )
-    draft = (await chat_completion(WRITER_PROMPT, user_prompt)).strip() or state.draft
+    draft = (
+        await chat_completion(WRITER_PROMPT, user_prompt, config=config)
+    ).strip() or state.draft
     return ResearchState(
         topic=state.topic,
         audience=state.audience,
