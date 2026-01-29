@@ -127,6 +127,9 @@ module foundryProject './modules/foundry-project.bicep' = {
     projectDescription: foundryProjectDescription
     tags: tags
   }
+  dependsOn: [
+    foundryResource
+  ]
 }
 
 module foundryModels './modules/foundry-models.bicep' = {
@@ -134,6 +137,10 @@ module foundryModels './modules/foundry-models.bicep' = {
     foundryName: foundryResource.outputs.accountName
     deployments: modelDeployments
   }
+  dependsOn: [
+    foundryResource
+    foundryProject
+  ]
 }
 
 
