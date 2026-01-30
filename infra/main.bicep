@@ -138,7 +138,6 @@ module foundryModels './modules/foundry-models.bicep' = {
     deployments: modelDeployments
   }
   dependsOn: [
-    foundryResource
     foundryProject
   ]
 }

@@ -1,14 +1,20 @@
 import logging
 import os
 
-from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter, AzureMonitorTraceExporter
+from azure.monitor.opentelemetry.exporter import (
+    AzureMonitorLogExporter,
+    AzureMonitorMetricExporter,
+    AzureMonitorTraceExporter,
+)
 from langchain_azure_ai.callbacks.tracers import AzureAIOpenTelemetryTracer
-from opentelemetry import _logs, trace
+from opentelemetry import _logs, metrics, trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -18,6 +24,16 @@ from app.core.utils.config import get_settings
 _telemetry_configured = False
 _fastapi_instrumented = False
 _langchain_tracer: AzureAIOpenTelemetryTracer | None = None
+
+
+class _TelemetryNoiseFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        noisy_prefixes = (
+            "azure.monitor.opentelemetry",
+            "azure.core.pipeline",
+            "azure.core.pipeline.policies.http_logging_policy",
+        )
+        return not record.name.startswith(noisy_prefixes)
 
 
 def configure_telemetry(app=None) -> None:
@@ -52,10 +68,20 @@ def configure_telemetry(app=None) -> None:
         )
 
         _logs.set_logger_provider(logger_provider)
-        logging.getLogger().addHandler(
-            LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
-        )
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+        handler.addFilter(_TelemetryNoiseFilter())
+        logging.getLogger().addHandler(handler)
         LoggingInstrumentor().instrument(set_logging_format=True, logger_provider=logger_provider)
+
+        metric_reader = PeriodicExportingMetricReader(
+            AzureMonitorMetricExporter(connection_string=connection_string)
+        )
+        meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+        metrics.set_meter_provider(meter_provider)
+
+        logging.getLogger("azure").setLevel(logging.ERROR)
+        logging.getLogger("azure.core.pipeline").setLevel(logging.ERROR)
+        logging.getLogger("azure.monitor.opentelemetry").setLevel(logging.ERROR)
         RequestsInstrumentor().instrument()
         _telemetry_configured = True
 
