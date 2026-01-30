@@ -37,29 +37,22 @@ Install the required tools on Ubuntu/Debian:
 6. Install Make (optional)
    - sudo apt-get install -y make
 
+## Quickstart (azd)
+
+1. Clone the repo and enter it
+   - git clone https://github.com/ppenumatsa1/langgraph-agents-monorepo.git
+   - cd langgraph-agents-monorepo
+2. Verify Docker is running
+   - docker version
+3. Authenticate and run azd
+   - azd auth login
+   - azd env new <env-name>
+   - azd up
+
 ## Local Development
 
-See [agents/researcher-agent/README.md](agents/researcher-agent/README.md) for local setup and run instructions.
-
-## Verify Local Deployment
-
-Run the smoke tests against a local server:
-
-- SMOKE_BASE_URL=http://localhost:8000 python -m pytest agents/researcher-agent/tests/test_smoke_live.py
-
-## Azure Deployment (azd)
-
-We use azd for deployments. Before running azd, ensure:
-
-- A Python virtual environment is created and active for the agent (for local validation)
-- Agent-level .env is present with required configuration
-
-Typical steps:
-
-1. azd auth login
-2. azd env new
-3. azd provision
-4. azd deploy
+Local setup, dependencies, and local run instructions are agent-specific.
+See [agents/researcher-agent/README.md](agents/researcher-agent/README.md).
 
 ## Verify Azure Deployment
 
@@ -78,9 +71,9 @@ Run the smoke tests against the deployed endpoint:
 
 Each agent owns design artifacts under docs/design (PRD, tech stack, project structure, user flow).
 
-| Agent            | Description                        | README                                                                 |
-| ---------------- | ---------------------------------- | ---------------------------------------------------------------------- |
-| researcher-agent | Research → write → review workflow | [agents/researcher-agent/README.md](agents/researcher-agent/README.md) |
+| Agent            | Description                        | Docs                                                         |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------ |
+| researcher-agent | Research → write → review workflow | [agents/researcher-agent/docs](agents/researcher-agent/docs) |
 
 ## License
 

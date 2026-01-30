@@ -4,18 +4,22 @@ A FastAPI + LangGraph service that performs research, drafts a response, reviews
 
 ## Local Setup
 
-1. Create and activate a virtual environment
+1. Clone the repo and enter the agent folder
+   - git clone https://github.com/ppenumatsa1/langgraph-agents-monorepo.git
+   - cd langgraph-agents-monorepo/agents/researcher-agent
+
+2. Create and activate a virtual environment
    - python3.11 -m venv .venv
    - source .venv/bin/activate
 
-2. Install dependencies
+3. Install dependencies
    - pip install -e .
 
-3. Create a local environment file
+4. Create a local environment file
    - cp .env.example .env
    - Edit values in [.env](.env) as needed (see example in [.env.example](.env.example)).
 
-4. Run the service
+5. Run the service
    - uvicorn app.main:app --reload
 
 For Makefile-driven commands, see [Makefile](Makefile).
