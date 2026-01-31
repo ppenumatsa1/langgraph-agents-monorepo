@@ -1,23 +1,28 @@
 import json
 
 from app.core.llm import chat_completion
+from app.domain.services.research_enrichment import enrich_with_research
 from app.langgraph.prompts import RESEARCHER_PROMPT
 from app.langgraph.state import ResearchState
 
 
 async def researcher_node(state: ResearchState, config: dict | None = None) -> ResearchState:
-    summary = await _summarize(state, config)
+    enriched_state = state
+    if not state.sources:
+        enriched_state = await enrich_with_research(state, config=config)
+
+    summary = await _summarize(enriched_state, config)
     return ResearchState(
-        topic=state.topic,
-        audience=state.audience,
-        tone=state.tone,
-        length=state.length,
-        time_range=state.time_range,
-        sources=state.sources,
+        topic=enriched_state.topic,
+        audience=enriched_state.audience,
+        tone=enriched_state.tone,
+        length=enriched_state.length,
+        time_range=enriched_state.time_range,
+        sources=enriched_state.sources,
         research_summary=summary,
-        draft=state.draft,
-        review_notes=state.review_notes,
-        summary=state.summary,
+        draft=enriched_state.draft,
+        review_notes=enriched_state.review_notes,
+        summary=enriched_state.summary,
     )
 
 

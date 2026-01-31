@@ -1,13 +1,38 @@
-import asyncio
+import json
+from typing import Any
+
+from langchain_core.messages import AIMessage
+from langgraph.prebuilt import ToolNode
 
 from app.core.exceptions import ExternalServiceError
-from app.domain.repo.web_search_repo import search_web
 from app.langgraph.state import ResearchState
+from app.langgraph.tools.web_search import web_search_tool
+
+_tool_node = ToolNode([web_search_tool], name="web_search")
 
 
 async def enrich_with_research(state: ResearchState, config: dict | None = None) -> ResearchState:
     try:
-        sources = await asyncio.to_thread(search_web, state.topic, config=config)
+        tool_calls = [
+            {
+                "id": "web_search-1",
+                "name": "web_search",
+                "type": "tool_call",
+                "args": {
+                    "query": state.topic,
+                    "max_results": 6,
+                    "region": "us-en",
+                },
+            }
+        ]
+        ai_message = AIMessage(content="", tool_calls=tool_calls)
+        if config is None:
+            result = await _tool_node.ainvoke({"messages": [ai_message]})
+        else:
+            result = await _tool_node.ainvoke({"messages": [ai_message]}, config=config)
+
+        messages = result.get("messages", []) if isinstance(result, dict) else result
+        sources = _extract_sources(messages)
     except Exception as exc:
         raise ExternalServiceError("Web search failed", cause=exc) from exc
     return ResearchState(
@@ -21,3 +46,20 @@ async def enrich_with_research(state: ResearchState, config: dict | None = None)
         review_notes=state.review_notes,
         summary=state.summary,
     )
+
+
+def _extract_sources(messages: list[Any]) -> list[dict[str, str]]:
+    if not messages:
+        return []
+
+    content = getattr(messages[0], "content", None)
+    if isinstance(content, list):
+        return content
+    if isinstance(content, str):
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            return []
+    return []
