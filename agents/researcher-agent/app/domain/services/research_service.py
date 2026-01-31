@@ -8,38 +8,44 @@ from app.core.observability import get_langchain_tracer
 from app.langgraph.graph import build_graph
 from app.langgraph.state import ResearchState
 
+tracer = trace.get_tracer(__name__)
+
 
 async def run_research(state: ResearchState) -> ResearchState:
-    graph = build_graph()
-    config = _get_graph_config()
-    graph_input = _to_input(state)
-    try:
-        if config is None:
-            result: Any = await graph.ainvoke(graph_input)
-        else:
-            result = await graph.ainvoke(graph_input, config=config)
-        return _to_state(result)
-    except ResearcherAgentError:
-        raise
-    except Exception as exc:
-        raise ResearcherAgentError("Research flow failed", cause=exc) from exc
+    with tracer.start_as_current_span("service.run_research") as span:
+        span.set_attribute("app.topic", state.topic)
+        graph = build_graph()
+        config = _get_graph_config()
+        graph_input = _to_input(state)
+        try:
+            if config is None:
+                result: Any = await graph.ainvoke(graph_input)
+            else:
+                result = await graph.ainvoke(graph_input, config=config)
+            return _to_state(result)
+        except ResearcherAgentError:
+            raise
+        except Exception as exc:
+            raise ResearcherAgentError("Research flow failed", cause=exc) from exc
 
 
 async def stream_research(state: ResearchState) -> AsyncIterator[ResearchState]:
-    graph = build_graph()
-    config = _get_graph_config()
-    graph_input = _to_input(state)
-    try:
-        if config is None:
-            stream = graph.astream(graph_input, stream_mode="values")
-        else:
-            stream = graph.astream(graph_input, stream_mode="values", config=config)
-        async for value in stream:
-            yield _to_state(value)
-    except ResearcherAgentError:
-        raise
-    except Exception as exc:
-        raise ResearcherAgentError("Research stream failed", cause=exc) from exc
+    with tracer.start_as_current_span("service.stream_research") as span:
+        span.set_attribute("app.topic", state.topic)
+        graph = build_graph()
+        config = _get_graph_config()
+        graph_input = _to_input(state)
+        try:
+            if config is None:
+                stream = graph.astream(graph_input, stream_mode="values")
+            else:
+                stream = graph.astream(graph_input, stream_mode="values", config=config)
+            async for value in stream:
+                yield _to_state(value)
+        except ResearcherAgentError:
+            raise
+        except Exception as exc:
+            raise ResearcherAgentError("Research stream failed", cause=exc) from exc
 
 
 def _to_state(result: Any) -> ResearchState:

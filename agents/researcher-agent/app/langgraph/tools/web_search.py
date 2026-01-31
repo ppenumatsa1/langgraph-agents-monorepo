@@ -4,22 +4,31 @@ from typing import Any
 
 from ddgs import DDGS
 from langchain.tools import tool
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
 
 
 def web_search(query: str, max_results: int = 6, region: str = "us-en") -> list[dict[str, str]]:
-    results: list[dict[str, str]] = []
-    with DDGS() as ddgs:
-        try:
-            for item in ddgs.news(query, region=region, max_results=max_results):
-                results.append(_normalize_result(item))
-        except Exception:
-            pass
+    with tracer.start_as_current_span("tool.web_search") as span:
+        span.set_attribute("app.query", query)
+        span.set_attribute("app.max_results", max_results)
+        span.set_attribute("app.region", region)
+        results: list[dict[str, str]] = []
+        with DDGS() as ddgs:
+            try:
+                for item in ddgs.news(query, region=region, max_results=max_results):
+                    results.append(_normalize_result(item))
+            except Exception:
+                pass
 
-        if not results:
-            for item in ddgs.text(query, region=region, max_results=max_results):
-                results.append(_normalize_result(item))
+            if not results:
+                for item in ddgs.text(query, region=region, max_results=max_results):
+                    results.append(_normalize_result(item))
 
-    return [r for r in results if r.get("url")]
+        filtered = [r for r in results if r.get("url")]
+        span.set_attribute("app.results.count", len(filtered))
+        return filtered
 
 
 @tool("web_search")

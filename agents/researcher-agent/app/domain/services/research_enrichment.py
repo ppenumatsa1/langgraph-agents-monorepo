@@ -3,36 +3,41 @@ from typing import Any
 
 from langchain_core.messages import AIMessage
 from langgraph.prebuilt import ToolNode
+from opentelemetry import trace
 
 from app.core.exceptions import ExternalServiceError
 from app.langgraph.state import ResearchState
 from app.langgraph.tools.web_search import web_search_tool
 
 _tool_node = ToolNode([web_search_tool], name="web_search")
+tracer = trace.get_tracer(__name__)
 
 
 async def enrich_with_research(state: ResearchState, config: dict | None = None) -> ResearchState:
     try:
-        tool_calls = [
-            {
-                "id": "web_search-1",
-                "name": "web_search",
-                "type": "tool_call",
-                "args": {
-                    "query": state.topic,
-                    "max_results": 6,
-                    "region": "us-en",
-                },
-            }
-        ]
-        ai_message = AIMessage(content="", tool_calls=tool_calls)
-        if config is None:
-            result = await _tool_node.ainvoke({"messages": [ai_message]})
-        else:
-            result = await _tool_node.ainvoke({"messages": [ai_message]}, config=config)
+        with tracer.start_as_current_span("service.enrich_with_research") as span:
+            span.set_attribute("app.topic", state.topic)
+            tool_calls = [
+                {
+                    "id": "web_search-1",
+                    "name": "web_search",
+                    "type": "tool_call",
+                    "args": {
+                        "query": state.topic,
+                        "max_results": 6,
+                        "region": "us-en",
+                    },
+                }
+            ]
+            ai_message = AIMessage(content="", tool_calls=tool_calls)
+            if config is None:
+                result = await _tool_node.ainvoke({"messages": [ai_message]})
+            else:
+                result = await _tool_node.ainvoke({"messages": [ai_message]}, config=config)
 
-        messages = result.get("messages", []) if isinstance(result, dict) else result
-        sources = _extract_sources(messages)
+            messages = result.get("messages", []) if isinstance(result, dict) else result
+            sources = _extract_sources(messages)
+            span.set_attribute("app.sources.count", len(sources))
     except Exception as exc:
         raise ExternalServiceError("Web search failed", cause=exc) from exc
     return ResearchState(

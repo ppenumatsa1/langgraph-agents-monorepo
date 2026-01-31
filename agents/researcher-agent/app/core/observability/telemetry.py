@@ -16,8 +16,9 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import SpanContext, TraceFlags
 
 from app.core.utils.config import get_settings
 
@@ -36,12 +37,43 @@ class _TelemetryNoiseFilter(logging.Filter):
         return not record.name.startswith(noisy_prefixes)
 
 
+class _SpanNoiseFilterProcessor(SpanProcessor):
+    def on_start(self, span, parent_context):
+        return
+
+    def on_end(self, span):
+        name = getattr(span, "name", "")
+        attributes = getattr(span, "attributes", {}) or {}
+        asgi_event = attributes.get("asgi.event.type")
+        noisy_name_suffixes = (" http receive", " http send")
+
+        if asgi_event in {"http.request", "http.response.start", "http.response.body"}:
+            span._context = SpanContext(
+                span.context.trace_id,
+                span.context.span_id,
+                span.context.is_remote,
+                TraceFlags(TraceFlags.DEFAULT),
+                span.context.trace_state,
+            )
+            return
+
+        if name.endswith(noisy_name_suffixes):
+            span._context = SpanContext(
+                span.context.trace_id,
+                span.context.span_id,
+                span.context.is_remote,
+                TraceFlags(TraceFlags.DEFAULT),
+                span.context.trace_state,
+            )
+
+
 def configure_telemetry(app=None) -> None:
     global _telemetry_configured
     global _fastapi_instrumented
 
     settings = get_settings()
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
+
     if not connection_string:
         logging.getLogger(__name__).warning(
             "Telemetry disabled: missing APPLICATIONINSIGHTS_CONNECTION_STRING"
@@ -57,6 +89,7 @@ def configure_telemetry(app=None) -> None:
         )
 
         tracer_provider = TracerProvider(resource=resource)
+        tracer_provider.add_span_processor(_SpanNoiseFilterProcessor())
         tracer_provider.add_span_processor(
             BatchSpanProcessor(AzureMonitorTraceExporter(connection_string=connection_string))
         )
@@ -82,6 +115,7 @@ def configure_telemetry(app=None) -> None:
         logging.getLogger("azure").setLevel(logging.ERROR)
         logging.getLogger("azure.core.pipeline").setLevel(logging.ERROR)
         logging.getLogger("azure.monitor.opentelemetry").setLevel(logging.ERROR)
+
         RequestsInstrumentor().instrument()
         _telemetry_configured = True
 

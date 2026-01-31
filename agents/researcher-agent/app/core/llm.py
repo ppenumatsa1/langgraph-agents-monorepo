@@ -6,11 +6,13 @@ from functools import lru_cache
 from azure.identity import DefaultAzureCredential
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
+from opentelemetry import trace
 
 from app.core.exceptions import ExternalServiceError
 from app.core.utils import get_settings
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 async def chat_completion(system_prompt: str, user_prompt: str, config: dict | None = None) -> str:
@@ -20,15 +22,18 @@ async def chat_completion(system_prompt: str, user_prompt: str, config: dict | N
         return ""
 
     try:
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt),
-        ]
-        if config is None:
-            response = await model.ainvoke(messages)
-        else:
-            response = await model.ainvoke(messages, config=config)
-        return (response.content or "").strip()
+        with tracer.start_as_current_span("llm.chat_completion") as span:
+            span.set_attribute("app.prompt.system_length", len(system_prompt))
+            span.set_attribute("app.prompt.user_length", len(user_prompt))
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ]
+            if config is None:
+                response = await model.ainvoke(messages)
+            else:
+                response = await model.ainvoke(messages, config=config)
+            return (response.content or "").strip()
     except Exception as exc:
         raise ExternalServiceError("LLM request failed", cause=exc) from exc
 
