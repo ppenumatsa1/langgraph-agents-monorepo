@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any
 
 from langchain_core.messages import AIMessage
@@ -11,12 +12,14 @@ from app.langgraph.tools.web_search import web_search_tool
 
 _tool_node = ToolNode([web_search_tool], name="web_search")
 tracer = trace.get_tracer(__name__)
+logger = logging.getLogger("app.services.research_enrichment")
 
 
 async def enrich_with_research(state: ResearchState, config: dict | None = None) -> ResearchState:
     try:
         with tracer.start_as_current_span("service.enrich_with_research") as span:
             span.set_attribute("app.topic", state.topic)
+            logger.info("Enrichment started", extra={"topic": state.topic})
             tool_calls = [
                 {
                     "id": "web_search-1",
@@ -38,6 +41,10 @@ async def enrich_with_research(state: ResearchState, config: dict | None = None)
             messages = result.get("messages", []) if isinstance(result, dict) else result
             sources = _extract_sources(messages)
             span.set_attribute("app.sources.count", len(sources))
+            logger.info(
+                "Enrichment completed",
+                extra={"topic": state.topic, "sources_count": len(sources)},
+            )
     except Exception as exc:
         raise ExternalServiceError("Web search failed", cause=exc) from exc
     return ResearchState(

@@ -1,4 +1,5 @@
 import json
+import logging
 
 from opentelemetry import trace
 
@@ -8,17 +9,23 @@ from app.langgraph.prompts import RESEARCHER_PROMPT
 from app.langgraph.state import ResearchState
 
 tracer = trace.get_tracer(__name__)
+logger = logging.getLogger("app.langgraph.nodes.researcher")
 
 
 async def researcher_node(state: ResearchState, config: dict | None = None) -> ResearchState:
     with tracer.start_as_current_span("node.researcher") as span:
         span.set_attribute("app.topic", state.topic)
+        logger.info("Researcher node started", extra={"topic": state.topic})
         enriched_state = state
         if not state.sources:
             enriched_state = await enrich_with_research(state, config=config)
 
         summary = await _summarize(enriched_state, config)
         span.set_attribute("app.sources.count", len(enriched_state.sources))
+        logger.info(
+            "Researcher node completed",
+            extra={"topic": enriched_state.topic, "sources_count": len(enriched_state.sources)},
+        )
         return ResearchState(
             topic=enriched_state.topic,
             audience=enriched_state.audience,
@@ -35,6 +42,7 @@ async def researcher_node(state: ResearchState, config: dict | None = None) -> R
 
 async def _summarize(state: ResearchState, config: dict | None = None) -> str:
     with tracer.start_as_current_span("node.researcher.summarize"):
+        logger.info("Researcher summarize started", extra={"topic": state.topic})
         sources_payload = json.dumps(state.sources[:5], ensure_ascii=False)
         user_prompt = (
             f"Topic: {state.topic}\n"
@@ -45,4 +53,5 @@ async def _summarize(state: ResearchState, config: dict | None = None) -> str:
             "Return 4-6 concise bullet points summarizing the key insights."
         )
         response = await chat_completion(RESEARCHER_PROMPT, user_prompt, config=config)
+        logger.info("Researcher summarize completed", extra={"topic": state.topic})
         return response.strip() or ""

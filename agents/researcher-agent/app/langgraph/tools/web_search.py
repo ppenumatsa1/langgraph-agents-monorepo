@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from ddgs import DDGS
@@ -7,6 +8,7 @@ from langchain.tools import tool
 from opentelemetry import trace
 
 tracer = trace.get_tracer(__name__)
+logger = logging.getLogger("app.langgraph.tools.web_search")
 
 
 def web_search(query: str, max_results: int = 6, region: str = "us-en") -> list[dict[str, str]]:
@@ -14,6 +16,7 @@ def web_search(query: str, max_results: int = 6, region: str = "us-en") -> list[
         span.set_attribute("app.query", query)
         span.set_attribute("app.max_results", max_results)
         span.set_attribute("app.region", region)
+        logger.info("Web search started", extra={"query": query, "max_results": max_results})
         results: list[dict[str, str]] = []
         with DDGS() as ddgs:
             try:
@@ -28,6 +31,7 @@ def web_search(query: str, max_results: int = 6, region: str = "us-en") -> list[
 
         filtered = [r for r in results if r.get("url")]
         span.set_attribute("app.results.count", len(filtered))
+        logger.info("Web search completed", extra={"query": query, "results_count": len(filtered)})
         return filtered
 
 

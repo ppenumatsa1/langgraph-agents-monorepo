@@ -49,3 +49,8 @@ For Makefile-driven commands, see [Makefile](Makefile).
 - GET /health
 - POST /v1/research
 - POST /v1/research/stream
+
+## Observability Notes
+
+- Each request gets an `X-Correlation-Id` response header (generated if missing).
+- Logs include `correlation_id` for end-to-end flow tracing.

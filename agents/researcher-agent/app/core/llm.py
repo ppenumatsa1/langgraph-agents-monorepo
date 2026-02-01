@@ -25,6 +25,7 @@ async def chat_completion(system_prompt: str, user_prompt: str, config: dict | N
         with tracer.start_as_current_span("llm.chat_completion") as span:
             span.set_attribute("app.prompt.system_length", len(system_prompt))
             span.set_attribute("app.prompt.user_length", len(user_prompt))
+            logger.info("LLM request started")
             messages = [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt),
@@ -33,6 +34,7 @@ async def chat_completion(system_prompt: str, user_prompt: str, config: dict | N
                 response = await model.ainvoke(messages)
             else:
                 response = await model.ainvoke(messages, config=config)
+            logger.info("LLM request completed")
             return (response.content or "").strip()
     except Exception as exc:
         raise ExternalServiceError("LLM request failed", cause=exc) from exc

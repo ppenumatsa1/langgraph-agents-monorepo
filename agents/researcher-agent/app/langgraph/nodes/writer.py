@@ -1,4 +1,5 @@
 import json
+import logging
 
 from opentelemetry import trace
 
@@ -7,11 +8,13 @@ from app.langgraph.prompts import WRITER_PROMPT
 from app.langgraph.state import ResearchState
 
 tracer = trace.get_tracer(__name__)
+logger = logging.getLogger("app.langgraph.nodes.writer")
 
 
 async def writer_node(state: ResearchState, config: dict | None = None) -> ResearchState:
     with tracer.start_as_current_span("node.writer") as span:
         span.set_attribute("app.topic", state.topic)
+        logger.info("Writer node started", extra={"topic": state.topic})
         sources_payload = json.dumps(state.sources[:5], ensure_ascii=False)
         user_prompt = (
             f"Topic: {state.topic}\n"
@@ -25,6 +28,7 @@ async def writer_node(state: ResearchState, config: dict | None = None) -> Resea
         draft = (
             await chat_completion(WRITER_PROMPT, user_prompt, config=config)
         ).strip() or state.draft
+        logger.info("Writer node completed", extra={"topic": state.topic})
         return ResearchState(
             topic=state.topic,
             audience=state.audience,

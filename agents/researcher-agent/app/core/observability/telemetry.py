@@ -20,6 +20,7 @@ from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import SpanContext, TraceFlags
 
+from app.core.middleware.correlation import get_correlation_id
 from app.core.utils.config import get_settings
 
 _telemetry_configured = False
@@ -67,6 +68,38 @@ class _SpanNoiseFilterProcessor(SpanProcessor):
             )
 
 
+class _LogRecordEnrichmentFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        trace_id = get_current_trace_id()
+        span_id = get_current_span_id()
+        correlation_id = get_current_correlation_id()
+        if trace_id and not hasattr(record, "trace_id"):
+            setattr(record, "trace_id", trace_id)
+        if span_id and not hasattr(record, "span_id"):
+            setattr(record, "span_id", span_id)
+        if correlation_id and not hasattr(record, "correlation_id"):
+            setattr(record, "correlation_id", correlation_id)
+        return True
+
+
+def get_current_trace_id() -> str | None:
+    span_context = trace.get_current_span().get_span_context()
+    if span_context and span_context.is_valid:
+        return format(span_context.trace_id, "032x")
+    return None
+
+
+def get_current_span_id() -> str | None:
+    span_context = trace.get_current_span().get_span_context()
+    if span_context and span_context.is_valid:
+        return format(span_context.span_id, "016x")
+    return None
+
+
+def get_current_correlation_id() -> str | None:
+    return get_correlation_id()
+
+
 def configure_telemetry(app=None) -> None:
     global _telemetry_configured
     global _fastapi_instrumented
@@ -103,6 +136,7 @@ def configure_telemetry(app=None) -> None:
         _logs.set_logger_provider(logger_provider)
         handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
         handler.addFilter(_TelemetryNoiseFilter())
+        handler.addFilter(_LogRecordEnrichmentFilter())
         logging.getLogger().addHandler(handler)
         LoggingInstrumentor().instrument(set_logging_format=True, logger_provider=logger_provider)
 
